@@ -6,7 +6,7 @@ use anchor_lang::solana_program::{program::invoke, system_instruction};
 
 // clock
 use anchor_lang::solana_program::clock::Clock;
-declare_id!("V8g165mAF8vQVBzFp7eXYcakwohWMSePrXPDmb6eF4k");
+declare_id!("3JpkV6YnfUrcLFGxPWi3MihavFFBSEQj2eviQrnFhMUj");
 
 pub const GLOBAL_STATE_SEED: &[u8] = b"GLOBAL-STATE-SEED";
 pub const ROUND_STATE_SEED: &[u8] = b"ROUND-STATE-SEED";
@@ -58,12 +58,12 @@ pub mod bet_game {
     /// Join the round with a number
     pub fn join_round(ctx: Context<Join>, round_index: u32, num: u32) -> Result<()> {
         require!(
-            *ctx.accounts.user.key != ctx.accounts.round_state.creator,
-            BetGame::NotCreator
-        );
-        require!(
             ctx.accounts.round_state.joiner == Pubkey::default(),
             BetGame::AlreadyJoined
+        );
+        require!(
+            ctx.accounts.round_state.is_finished == false,
+            BetGame::AlreadyFinished
         );
         let round_state = &mut ctx.accounts.round_state;
         round_state.joiner = *ctx.accounts.user.key;
@@ -87,15 +87,9 @@ pub mod bet_game {
     /// Reveal the number and determine the winner
     pub fn reveal(ctx: Context<Reveal>, round_index: u32, num: u32) -> Result<()> {
         msg!("Creator {:?}", ctx.accounts.round_state.creator);
-
         require!(
-            *ctx.accounts.user.key == ctx.accounts.round_state.creator,
-            BetGame::NotCreator
-        );
-        msg!("hashed_num {:?}", hash(&num.to_le_bytes()).to_bytes());
-        require!(
-            hash(&num.to_le_bytes()).to_bytes() == ctx.accounts.round_state.creator_hash,
-            BetGame::HashNotMatch
+            ctx.accounts.round_state.joiner != Pubkey::default(),
+            BetGame::NoJoiner
         );
         require!(
             !ctx.accounts.round_state.is_revealed,
@@ -106,8 +100,13 @@ pub mod bet_game {
             BetGame::OutOfTime
         );
         require!(
-            ctx.accounts.round_state.joiner != Pubkey::default(),
-            BetGame::NoJoiner
+            *ctx.accounts.user.key == ctx.accounts.round_state.creator,
+            BetGame::NotCreator
+        );
+        msg!("hashed_num {:?}", hash(&num.to_le_bytes()).to_bytes());
+        require!(
+            hash(&num.to_le_bytes()).to_bytes() == ctx.accounts.round_state.creator_hash,
+            BetGame::HashNotMatch
         );
 
         let round_state = &mut ctx.accounts.round_state;
@@ -120,23 +119,21 @@ pub mod bet_game {
         };
         round_state.winner = winner;
         // Transfer the prize to the winner
-        let _ = invoke(
-            &system_instruction::transfer(
-                ctx.accounts.vault.key,
-                &winner,
-                FEE * 2,
-            ),
-            &[
-                ctx.accounts.vault.clone(),
-                ctx.accounts.user.to_account_info().clone(),
-                ctx.accounts.system_program.clone(),
-            ],
-        );
+        **ctx.accounts.vault.lamports.borrow_mut() -= FEE * 2;
+        if winner == round_state.creator {
+            **ctx.accounts.user.lamports.borrow_mut() += FEE * 2;
+        } else {
+            **ctx.accounts.joiner.lamports.borrow_mut() += FEE * 2;
+        }
         Ok(())
     }
     // In case the creator doesn't reveal the number, the joiner can claim the prize
     pub fn claim(ctx: Context<Claim>, round_index: u32) -> Result<()> {
         let round_state = &mut ctx.accounts.round_state;
+        require!(
+            *ctx.accounts.user.key == round_state.joiner,
+            BetGame::NotJoiner
+        );
         require!(round_state.is_revealed, BetGame::AlreadyRevealed);
         require!(
             Clock::get()?.unix_timestamp - round_state.join_time > MAX_REVEAL_TIME,
@@ -145,19 +142,9 @@ pub mod bet_game {
         let winner = round_state.joiner;
         round_state.winner = winner;
         // Transfer the prize to the winner
-        let _ = invoke(
-            &system_instruction::transfer(
-                ctx.accounts.vault.key,
-                &winner,
-                FEE * 2,
-            ),
-            &[
-                ctx.accounts.vault.clone(),
-                ctx.accounts.user.to_account_info().clone(),
-                ctx.accounts.system_program.clone(),
-            ],
-        );
-
+        **ctx.accounts.vault.lamports.borrow_mut() -= FEE * 2;
+        **ctx.accounts.user.lamports.borrow_mut() += FEE * 2;
+        round_state.is_finished = true;
         Ok(())
     }
 
@@ -166,27 +153,15 @@ pub mod bet_game {
         let round_state = &mut ctx.accounts.round_state;
         require!(round_state.creator == *ctx.accounts.user.key, BetGame::NotCreator);
         require!(
-            Clock::get()?.unix_timestamp > round_state.timeout,
-            BetGame::OutOfTime
-        );
-        require!(
             round_state.joiner == Pubkey::default(),
             BetGame::NoJoiner
         );
         let creator = round_state.creator;
+
         // Transfer the deposit back to the creator
-        let _ = invoke(
-            &system_instruction::transfer(
-                ctx.accounts.vault.key,
-                &creator,
-                FEE,
-            ),
-            &[
-                ctx.accounts.vault.clone(),
-                ctx.accounts.user.to_account_info().clone(),
-                ctx.accounts.system_program.clone(),
-            ],
-        );
+        **ctx.accounts.vault.lamports.borrow_mut() -= FEE;
+        **ctx.accounts.user.lamports.borrow_mut() += FEE;
+        round_state.is_finished = true;
         Ok(())
     }
 }
@@ -197,6 +172,15 @@ pub struct Initialize<'info> {
     pub global_state: Account<'info, GlobalState>,
     #[account(mut)]
     pub user: Signer<'info>,
+    #[account(
+        init,
+        seeds = [VAULT_SEED],
+        bump,
+        payer = user,
+        space = 8 + size_of::<GlobalState>()
+    )]
+    /// CHECK: this should be checked with vault address
+    pub vault: AccountInfo<'info>,
     /// CHECK:
     pub system_program: AccountInfo<'info>,
 }
@@ -271,6 +255,9 @@ pub struct Reveal<'info> {
     )]
     /// CHECK: this should be checked with vault address
     pub vault: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK:
+    pub joiner: AccountInfo<'info>,
     /// CHECK:
     pub system_program: AccountInfo<'info>,
 }
@@ -343,6 +330,7 @@ pub struct RoundState {
     pub is_revealed: bool,
     pub winner: Pubkey,
     pub timeout: i64,
+    pub is_finished: bool,
 }
 
 #[error_code]
@@ -361,4 +349,10 @@ pub enum BetGame {
     NotEndRevealTime,
     #[msg("Already joined")]
     AlreadyJoined,
+    #[msg("Not joiner")]
+    NotJoiner,
+    #[msg("Not end yet")]
+    NotEndYet,
+    #[msg("Already finished")]
+    AlreadyFinished,
 }

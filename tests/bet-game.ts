@@ -2,13 +2,16 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { BetGame } from "../target/types/bet_game";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { keccak256, keccak224, keccak384, keccak512 } from "ethereum-cryptography/keccak.js";
+import { keccak256 } from "ethereum-cryptography/keccak.js";
 import bs58  from "bs58";
+const OWNER_NUM: number = 102322;
+console.log(keccak256(new anchor.BN(OWNER_NUM).toBuffer("le", 4)))
+console.log(new anchor.BN(1).toBuffer("le", 4).toString("hex"));
 describe("bet-game", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
-  const program = anchor.workspace.BetGame as Program<BetGame>;
+  const program = anchor.workspace.BetGame;
   let payer = anchor.web3.Keypair.fromSecretKey(
      new Uint8Array([73,70,80,94,245,200,222,222,16,76,165,146,67,8,157,155,17,47,176,79,142,127,1,98,143,113,70,188,217,126,81,135,8,167,152,92,252,174,189,208,88,186,215,231,182,230,127,239,94,212,178,171,77,69,236,56,132,138,168,90,54,121,95,31])
   );
@@ -39,6 +42,7 @@ describe("bet-game", () => {
   const ROUND_INDEX = 1;
   const GLOBAL_STATE_SEED = "GLOBAL-STATE-SEED";
   const ROUND_STATE_SEED = "ROUND-STATE-SEED";
+  const VAULT_SEED = "VAULT-SEED";
 
   const [globalStatePDA] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from(GLOBAL_STATE_SEED)],
@@ -46,6 +50,11 @@ describe("bet-game", () => {
   );
   const [roundStatePDA] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from(ROUND_STATE_SEED), new anchor.BN(ROUND_INDEX).toBuffer("le", 4)],
+    program.programId
+  );
+
+  const [vaultPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+    [Buffer.from(VAULT_SEED)],
     program.programId
   );
 
@@ -57,9 +66,6 @@ describe("bet-game", () => {
       globalState: globalStatePDA,
     }).rpc();
   });
-
-
-
 
   it("Can create a new game", async () => {
     // Add your test here.
@@ -74,6 +80,7 @@ describe("bet-game", () => {
       //@ts-ignore
       globalState: globalStatePDA,
       roundState: roundStatePDA,
+      vault: vaultPDA,
       systemProgram: anchor.web3.SystemProgram.programId,
     }).signers([payer]).rpc();
     console.log(tx);
@@ -90,6 +97,7 @@ describe("bet-game", () => {
       //@ts-ignore
       globalState: globalStatePDA,
       roundState: roundStatePDA,
+      vault: vaultPDA,
       systemProgram: anchor.web3.SystemProgram.programId,
     }).signers([player]).rpc();
     console.log(tx);
@@ -106,6 +114,7 @@ describe("bet-game", () => {
       //@ts-ignore
       globalState: globalStatePDA,
       roundState: roundStatePDA,
+      vault: vaultPDA,
       systemProgram: anchor.web3.SystemProgram.programId,
     }).signers([payer]).rpc();
     console.log(tx);
