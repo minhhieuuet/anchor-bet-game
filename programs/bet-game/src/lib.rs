@@ -2,13 +2,19 @@ use anchor_lang::error_code;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::keccak::hash;
 use std::mem::size_of;
+use anchor_lang::solana_program::{program::invoke, system_instruction};
+
 // clock
 use anchor_lang::solana_program::clock::Clock;
-declare_id!("A1t82ktKi5mXWWau4zBCN1LxP6xiWQ8VRo87N34YvFdD");
+declare_id!("V8g165mAF8vQVBzFp7eXYcakwohWMSePrXPDmb6eF4k");
 
 pub const GLOBAL_STATE_SEED: &[u8] = b"GLOBAL-STATE-SEED";
 pub const ROUND_STATE_SEED: &[u8] = b"ROUND-STATE-SEED";
-pub const MAX_REVEAL_TIME: i64 = 10 * 60; // 10 minutes
+pub const VAULT_SEED: &[u8] = b"VAULT_SEED";
+
+pub const MAX_REVEAL_TIME: i64 = 60 * 60; // 60 minutes
+pub const ROUND_DURATION: i64 = 24 * 60 * 60; // 24 hours
+pub const FEE: u64 = 10000000; // 0.01 SOL
 
 #[program]
 pub mod bet_game {
@@ -32,6 +38,20 @@ pub mod bet_game {
         round_state.status = false;
         round_state.start_time = Clock::get()?.unix_timestamp;
         round_state.creator_hash = hashed_num;
+        round_state.timeout = Clock::get()?.unix_timestamp + ROUND_DURATION;
+         // Transfer fee to vault
+         let _ = invoke(
+            &system_instruction::transfer(
+                ctx.accounts.user.key,
+                ctx.accounts.vault.key,
+                FEE,
+            ),
+            &[
+                ctx.accounts.user.to_account_info().clone(),
+                ctx.accounts.vault.clone(),
+                ctx.accounts.system_program.clone(),
+            ],
+        );
         Ok(())
     }
 
@@ -49,6 +69,19 @@ pub mod bet_game {
         round_state.joiner = *ctx.accounts.user.key;
         round_state.joiner_num = num;
         round_state.join_time = Clock::get()?.unix_timestamp;
+        // Transfer fee to vault
+        let _ = invoke(
+            &system_instruction::transfer(
+                ctx.accounts.user.key,
+                ctx.accounts.vault.key,
+                FEE,
+            ),
+            &[
+                ctx.accounts.user.to_account_info().clone(),
+                ctx.accounts.vault.clone(),
+                ctx.accounts.system_program.clone(),
+            ],
+        );
         Ok(())
     }
     /// Reveal the number and determine the winner
@@ -86,6 +119,19 @@ pub mod bet_game {
             round_state.joiner
         };
         round_state.winner = winner;
+        // Transfer the prize to the winner
+        let _ = invoke(
+            &system_instruction::transfer(
+                ctx.accounts.vault.key,
+                &winner,
+                FEE * 2,
+            ),
+            &[
+                ctx.accounts.vault.clone(),
+                ctx.accounts.user.to_account_info().clone(),
+                ctx.accounts.system_program.clone(),
+            ],
+        );
         Ok(())
     }
     // In case the creator doesn't reveal the number, the joiner can claim the prize
@@ -98,7 +144,49 @@ pub mod bet_game {
         );
         let winner = round_state.joiner;
         round_state.winner = winner;
+        // Transfer the prize to the winner
+        let _ = invoke(
+            &system_instruction::transfer(
+                ctx.accounts.vault.key,
+                &winner,
+                FEE * 2,
+            ),
+            &[
+                ctx.accounts.vault.clone(),
+                ctx.accounts.user.to_account_info().clone(),
+                ctx.accounts.system_program.clone(),
+            ],
+        );
 
+        Ok(())
+    }
+
+    // Incase timeout, no one join the round, the creator can claim the deposit
+    pub fn claim_deposit(ctx: Context<ClaimDeposit>, round_index: u32) -> Result<()> {
+        let round_state = &mut ctx.accounts.round_state;
+        require!(round_state.creator == *ctx.accounts.user.key, BetGame::NotCreator);
+        require!(
+            Clock::get()?.unix_timestamp > round_state.timeout,
+            BetGame::OutOfTime
+        );
+        require!(
+            round_state.joiner == Pubkey::default(),
+            BetGame::NoJoiner
+        );
+        let creator = round_state.creator;
+        // Transfer the deposit back to the creator
+        let _ = invoke(
+            &system_instruction::transfer(
+                ctx.accounts.vault.key,
+                &creator,
+                FEE,
+            ),
+            &[
+                ctx.accounts.vault.clone(),
+                ctx.accounts.user.to_account_info().clone(),
+                ctx.accounts.system_program.clone(),
+            ],
+        );
         Ok(())
     }
 }
@@ -132,6 +220,13 @@ pub struct Create<'info> {
         space = 8 + size_of::<RoundState>()
     )]
     pub round_state: Account<'info, RoundState>,
+    #[account(
+        mut,
+        seeds = [VAULT_SEED],
+        bump,
+    )]
+    /// CHECK: this should be checked with vault address
+    pub vault: AccountInfo<'info>,
     /// CHECK:
     pub system_program: AccountInfo<'info>,
 }
@@ -147,6 +242,15 @@ pub struct Join<'info> {
         bump
     )]
     pub round_state: Account<'info, RoundState>,
+    #[account(
+        mut,
+        seeds = [VAULT_SEED],
+        bump,
+    )]
+    /// CHECK: this should be checked with vault address
+    pub vault: AccountInfo<'info>,
+    /// CHECK:
+    pub system_program: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
@@ -160,6 +264,15 @@ pub struct Reveal<'info> {
         bump
     )]
     pub round_state: Account<'info, RoundState>,
+    #[account(
+        mut,
+        seeds = [VAULT_SEED],
+        bump,
+    )]
+    /// CHECK: this should be checked with vault address
+    pub vault: AccountInfo<'info>,
+    /// CHECK:
+    pub system_program: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
@@ -173,7 +286,39 @@ pub struct Claim<'info> {
         bump
     )]
     pub round_state: Account<'info, RoundState>,
+    #[account(
+        mut,
+        seeds = [VAULT_SEED],
+        bump,
+    )]
+    /// CHECK: this should be checked with vault address
+    pub vault: AccountInfo<'info>,
+    /// CHECK:
+    pub system_program: AccountInfo<'info>,
 }
+
+#[derive(Accounts)]
+#[instruction(round_index: u32)]
+pub struct ClaimDeposit<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [ROUND_STATE_SEED, &round_index.to_le_bytes()],
+        bump
+    )]
+    pub round_state: Account<'info, RoundState>,
+    #[account(
+        mut,
+        seeds = [VAULT_SEED],
+        bump,
+    )]
+    /// CHECK: this should be checked with vault address
+    pub vault: AccountInfo<'info>,
+    /// CHECK:
+    pub system_program: AccountInfo<'info>,
+}
+
 
 #[account]
 #[derive(Default)]
@@ -197,6 +342,7 @@ pub struct RoundState {
     pub join_time: i64,
     pub is_revealed: bool,
     pub winner: Pubkey,
+    pub timeout: i64,
 }
 
 #[error_code]
