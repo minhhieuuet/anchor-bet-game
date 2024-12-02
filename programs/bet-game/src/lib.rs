@@ -31,6 +31,10 @@ pub mod bet_game {
         hashed_num: [u8; 32],
     ) -> Result<()> {
         let global_state = &mut ctx.accounts.global_state;
+        require!(
+            round_index == global_state.total_round,
+            BetGame::InvalidRoundIndex
+        );
         global_state.total_round += 1;
         let round_state = &mut ctx.accounts.round_state;
         round_state.round_index = round_index;
@@ -355,4 +359,6 @@ pub enum BetGame {
     NotEndYet,
     #[msg("Already finished")]
     AlreadyFinished,
+    #[msg("Invalid round index")]
+    InvalidRoundIndex
 }
