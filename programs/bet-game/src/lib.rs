@@ -6,11 +6,12 @@ use anchor_lang::solana_program::{program::invoke, system_instruction};
 
 // clock
 use anchor_lang::solana_program::clock::Clock;
-declare_id!("3JpkV6YnfUrcLFGxPWi3MihavFFBSEQj2eviQrnFhMUj");
+declare_id!("HWBhShVS1n4KahWJiRF3PCKYKVJRxXdbLraDQBE8S6dX");
 
 pub const GLOBAL_STATE_SEED: &[u8] = b"GLOBAL-STATE-SEED";
 pub const ROUND_STATE_SEED: &[u8] = b"ROUND-STATE-SEED";
 pub const VAULT_SEED: &[u8] = b"VAULT_SEED";
+pub const USER_ROUND_LIST_SEED: &[u8] = b"USER-ROUND-LIST-SEED";
 
 pub const MAX_REVEAL_TIME: i64 = 60 * 60; // 60 minutes
 pub const ROUND_DURATION: i64 = 24 * 60 * 60; // 24 hours
@@ -202,10 +203,18 @@ pub struct Create<'info> {
     pub global_state: Account<'info, GlobalState>,
     #[account(
         init,
-        seeds = [ROUND_STATE_SEED, &round_index.to_le_bytes()],
+        seeds = [USER_ROUND_LIST_SEED, &round_index.to_le_bytes()],
         bump,
         payer = user,
         space = 8 + size_of::<RoundState>()
+    )]
+    pub user_round_indexs: Account<'info, UserRoundList>,
+    #[account(
+        init_if_needed,
+        seeds = [ROUND_STATE_SEED, &user.key.to_bytes()],
+        bump,
+        payer = user,
+        space = 8 + size_of::<UserRoundList>()
     )]
     pub round_state: Account<'info, RoundState>,
     #[account(
@@ -318,6 +327,13 @@ pub struct GlobalState {
     // Vector of round index
     pub round_index: Vec<u32>,
 }
+
+#[account]
+#[derive(Default)]
+pub struct UserRoundList {
+    pub round_indexs: Vec<u32>
+}
+
 
 #[account]
 #[derive(Default)]

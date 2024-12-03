@@ -1,19 +1,9 @@
-import BN from "bn.js";
-import * as web3 from "@solana/web3.js";
-import * as anchor from "@coral-xyz/anchor";
 import { PublicKey, ComputeBudgetProgram } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
-import type { HelloAnchor } from "../target/types/hello_anchor";
-
-// Configure the client to use the local cluster
-anchor.setProvider(anchor.AnchorProvider.env());
-
-const program = anchor.workspace.HelloAnchor as anchor.Program<HelloAnchor>;
-
 
 (async () => {
   const wallet = pg.wallet;
-  const program = program;
+  const program = pg.program;
   const ROUND_INDEX = 1;
   const GLOBAL_STATE_SEED = "GLOBAL-STATE-SEED";
   const ROUND_STATE_SEED = "ROUND-STATE-SEED";
