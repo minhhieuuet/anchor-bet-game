@@ -39,6 +39,8 @@ import * as anchor from "@coral-xyz/anchor";
       globalState: globalStatePDA,
       roundState: roundStatePDA,
       vault: vaultPDA,
+      creator: roundState.creator,
+      joiner: roundState.joiner,
       systemProgram: anchor.web3.SystemProgram.programId,
     })
     .rpc();
