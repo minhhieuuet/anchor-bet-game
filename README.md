@@ -7,7 +7,7 @@ anchor test
 ```
 
 ## Anchor Bet Game on Solana
-Devnet: https://solscan.io/account/DyD9KMRBcosbHosQAMmKTk29opoaPyYUwdr28vyvMinL?cluster=devnet
+Devnet: https://explorer.solana.com/address/DyD9KMRBcosbHosQAMmKTk29opoaPyYUwdr28vyvMinL?cluster=devnet
 
 Demo scripts: ./client
 
