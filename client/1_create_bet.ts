@@ -4,7 +4,7 @@ import * as anchor from "@coral-xyz/anchor";
 (async () => {
   const wallet = pg.wallet;
   const program = pg.program;
-  const ROUND_INDEX = 2;
+  const ROUND_INDEX = 0;
   const GLOBAL_STATE_SEED = "GLOBAL-STATE-SEED";
   const ROUND_STATE_SEED = "ROUND-STATE-SEED";
   const VAULT_SEED = "VAULT_SEED";
@@ -14,8 +14,6 @@ import * as anchor from "@coral-xyz/anchor";
     program.programId
   );
   const roundIndex = new anchor.BN(ROUND_INDEX);
-  console.log(roundIndex.toArrayLike(Buffer, "le", 4).toString("hex"));
-  console.log(program.programId.toBase58());
   const [roundStatePDA] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from(ROUND_STATE_SEED), roundIndex.toArrayLike(Buffer, "le", 4)],
     program.programId
@@ -25,16 +23,8 @@ import * as anchor from "@coral-xyz/anchor";
     [Buffer.from(VAULT_SEED)],
     program.programId
   );
-
-  // // Add your test here.
-  const OWNER_NUM: number = 102322;
-  // const hasedNum = keccak256(new anchor.BN(OWNER_NUM).toBuffer("le", 4));
-  const hashedNum = new Uint8Array([
-    156, 172, 236, 78, 218, 107, 122, 189, 56, 169, 17, 167, 1, 185, 250, 21,
-    57, 42, 8, 163, 193, 60, 25, 37, 228, 4, 41, 30, 107, 153, 133, 84,
-  ]); // hashed keccak256 of owner_num
   const tx = await program.methods
-    .createRound(ROUND_INDEX, Array.from(hashedNum))
+    .createRound(ROUND_INDEX)
     .accounts({
       user: wallet.publicKey,
       //@ts-ignore

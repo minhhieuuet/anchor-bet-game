@@ -4,7 +4,7 @@ import * as anchor from "@coral-xyz/anchor";
 (async () => {
   const wallet = pg.wallet;
   const program = pg.program;
-  const ROUND_INDEX = 1;
+  const ROUND_INDEX = 0;
   const GLOBAL_STATE_SEED = "GLOBAL-STATE-SEED";
   const ROUND_STATE_SEED = "ROUND-STATE-SEED";
   const VAULT_SEED = "VAULT_SEED";
@@ -14,8 +14,6 @@ import * as anchor from "@coral-xyz/anchor";
     program.programId
   );
   const roundIndex = new anchor.BN(ROUND_INDEX);
-  console.log(roundIndex.toArrayLike(Buffer, "le", 4).toString("hex"));
-  console.log(program.programId.toBase58());
   const [roundStatePDA] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from(ROUND_STATE_SEED), roundIndex.toArrayLike(Buffer, "le", 4)],
     program.programId
@@ -25,11 +23,8 @@ import * as anchor from "@coral-xyz/anchor";
     [Buffer.from(VAULT_SEED)],
     program.programId
   );
-
-  // // Add your test here.
-  const JOINER_NUM: number = 100000000;
   const tx = await program.methods
-    .joinRound(ROUND_INDEX, JOINER_NUM)
+    .joinRound(ROUND_INDEX)
     .accounts({
       user: wallet.publicKey,
       //@ts-ignore

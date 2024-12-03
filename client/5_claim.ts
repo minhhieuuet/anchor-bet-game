@@ -32,10 +32,9 @@ import * as anchor from "@coral-xyz/anchor";
   // // Add your test here.
   const OWNER_NUM: number = 102322;
   const tx = await program.methods
-    .reveal(ROUND_INDEX, OWNER_NUM)
+    .claim(ROUND_INDEX)
     .accounts({
       user: wallet.publicKey,
-      joiner: roundState.joiner,
       //@ts-ignore
       globalState: globalStatePDA,
       roundState: roundStatePDA,

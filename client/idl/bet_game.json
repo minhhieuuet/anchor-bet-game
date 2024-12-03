@@ -64,15 +64,41 @@
         {
           "name": "roundIndex",
           "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "creatorUpdateScore",
+      "accounts": [
+        {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
         },
         {
-          "name": "hashedNum",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
+          "name": "roundState",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "roundIndex",
+          "type": "u32"
+        },
+        {
+          "name": "score",
+          "type": "u32"
         }
       ]
     },
@@ -107,18 +133,11 @@
         {
           "name": "roundIndex",
           "type": "u32"
-        },
-        {
-          "name": "num",
-          "type": "u32"
         }
       ]
     },
     {
-      "name": "reveal",
-      "docs": [
-        "Reveal the number and determine the winner"
-      ],
+      "name": "joinerUpdateScore",
       "accounts": [
         {
           "name": "user",
@@ -136,11 +155,6 @@
           "isSigner": false
         },
         {
-          "name": "joiner",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
@@ -152,7 +166,7 @@
           "type": "u32"
         },
         {
-          "name": "num",
+          "name": "score",
           "type": "u32"
         }
       ]
@@ -172,6 +186,16 @@
         },
         {
           "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "joiner",
           "isMut": true,
           "isSigner": false
         },
@@ -240,6 +264,20 @@
       }
     },
     {
+      "name": "UserRoundList",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "roundIndexs",
+            "type": {
+              "vec": "u32"
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "RoundState",
       "type": {
         "kind": "struct",
@@ -257,24 +295,19 @@
             "type": "publicKey"
           },
           {
-            "name": "status",
+            "name": "isCreatorUpdated",
             "type": "bool"
           },
           {
-            "name": "creatorHash",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
+            "name": "isJoinerUpdated",
+            "type": "bool"
           },
           {
-            "name": "creatorNum",
+            "name": "creatorScore",
             "type": "u32"
           },
           {
-            "name": "joinerNum",
+            "name": "joinerScore",
             "type": "u32"
           },
           {
@@ -286,16 +319,16 @@
             "type": "i64"
           },
           {
-            "name": "isRevealed",
-            "type": "bool"
-          },
-          {
             "name": "winner",
             "type": "publicKey"
           },
           {
             "name": "timeout",
             "type": "i64"
+          },
+          {
+            "name": "isFinished",
+            "type": "bool"
           }
         ]
       }
@@ -341,6 +374,44 @@
       "code": 6007,
       "name": "NotJoiner",
       "msg": "Not joiner"
+    },
+    {
+      "code": 6008,
+      "name": "NotEndYet",
+      "msg": "Not end yet"
+    },
+    {
+      "code": 6009,
+      "name": "AlreadyFinished",
+      "msg": "Already finished"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidRoundIndex",
+      "msg": "Invalid round index"
+    },
+    {
+      "code": 6011,
+      "name": "NotOutOfTime",
+      "msg": "Not out of time"
+    },
+    {
+      "code": 6012,
+      "name": "CreatorNotUpdated",
+      "msg": "Creator not updated"
+    },
+    {
+      "code": 6013,
+      "name": "WrongJoiner",
+      "msg": "Wrong joiner"
+    },
+    {
+      "code": 6014,
+      "name": "WrongCreator",
+      "msg": "Wrong creator"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "DyD9KMRBcosbHosQAMmKTk29opoaPyYUwdr28vyvMinL"
+  }
 }
