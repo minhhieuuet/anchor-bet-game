@@ -5,7 +5,7 @@ use anchor_lang::solana_program::{program::invoke, system_instruction};
 
 // clock
 use anchor_lang::solana_program::clock::Clock;
-declare_id!("DyD9KMRBcosbHosQAMmKTk29opoaPyYUwdr28vyvMinL");
+declare_id!("Ed477P75RHCSFhnWkY2TWGTXuwXpUfnG5BjQ3QzLnntH");
 
 pub const GLOBAL_STATE_SEED: &[u8] = b"GLOBAL-STATE-SEED";
 pub const ROUND_STATE_SEED: &[u8] = b"ROUND-STATE-SEED";
@@ -142,6 +142,7 @@ pub mod bet_game {
             **ctx.accounts.creator.lamports.borrow_mut() += FEE;
             **ctx.accounts.joiner.lamports.borrow_mut() += FEE;
         }
+        round_state.is_claimed = true;
         Ok(())
     }
 
@@ -359,6 +360,7 @@ pub struct RoundState {
     pub winner: Pubkey,
     pub timeout: i64,
     pub is_finished: bool,
+    pub is_claimed: bool,
 }
 
 #[error_code]
