@@ -128,7 +128,7 @@ pub mod bet_game {
         require!(round_state.is_finished == true, BetGame::NotEndYet);
         require!(round_state.is_creator_updated == true, BetGame::CreatorNotUpdated);
         require!(round_state.is_joiner_updated == true, BetGame::CreatorNotUpdated);
-        require!(rround_state.is_claimed == false, BetGame::AlreadyClaimed);
+        require!(round_state.is_claimed == false, BetGame::AlreadyClaimed);
         // Transfer the deposit to the winner
         if round_state.winner == round_state.creator {
             **ctx.accounts.vault.lamports.borrow_mut() -= FEE * 2;
