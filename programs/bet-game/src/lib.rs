@@ -59,7 +59,7 @@ pub mod bet_game {
         require!(round_state.creator == *ctx.accounts.user.key, BetGame::NotCreator);
         require!(round_state.is_finished == false, BetGame::AlreadyFinished);
         require!(Clock::get()?.unix_timestamp < round_state.timeout, BetGame::OutOfTime);
-        require!(round_state.joiner != Pubkey::default(), BetGame::NoJoiner);
+        // require!(round_state.joiner != Pubkey::default(), BetGame::NoJoiner);
         round_state.creator_score = score;
         round_state.is_creator_updated = true;
         if round_state.is_joiner_updated == true {
